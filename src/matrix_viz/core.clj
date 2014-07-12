@@ -111,3 +111,11 @@
                                   (render-matrix matrix pixels-per-cell nodata-value color-ramp))]
     (try (ImageIO/write image "png" (io/file filename))
          (catch IOException _ (println "Failed to write matrix to PNG file" filename)))))
+
+(defn apply-mask
+  "Produces a new matrix containing the values in base-layer wherever
+   mask-layer is positive. All other cells are set to nodata-value."
+  [base-layer mask-layer nodata-value]
+  (emap (fn [b m] (if (pos? m) b nodata-value))
+        base-layer
+        mask-layer))
