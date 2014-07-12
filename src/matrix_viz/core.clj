@@ -116,6 +116,6 @@
   "Produces a new matrix containing the values in base-layer wherever
    mask-layer is positive. All other cells are set to nodata-value."
   [base-layer mask-layer nodata-value]
-  (emap (fn [b m] (if (pos? m) b nodata-value))
-        base-layer
-        mask-layer))
+  (m/emap (fn [b m] (if (pos? m) b nodata-value))
+          base-layer
+          mask-layer))
