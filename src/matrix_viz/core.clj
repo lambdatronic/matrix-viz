@@ -1,6 +1,8 @@
 (ns matrix-viz.core
   (:require [clojure.java.io :as io]
-            [clojure.core.matrix :as m])
+            [clojure.core.matrix :as m]
+            [clojure.core.matrix.operators :as mop]
+            [clojure.core.reducers :as r])
   (:import (java.awt Color Graphics)
            (java.awt.image BufferedImage)
            (javax.imageio ImageIO)
@@ -34,6 +36,11 @@
   [min max val]
   (/ (- val min)
      (- max min)))
+
+(defn denormalize
+  [min max val]
+  (+ (* val (- max min))
+     min))
 
 (defn draw-matrix!
   [^Graphics graphics2D matrix rows cols pixels-per-cell nodata-value legend-min legend-max color-ramp]
@@ -105,6 +112,12 @@
      :legend-max          (apply max (remove #{nodata-value} (m/eseq matrix)))}))
 
 (defn save-matrix-as-png
+  "Renders the matrix as either an 8-bit grayscale image (color-ramp
+   = :gray) or an 8-bit RGB image (color-ramp = :color) and saves it to
+   the given filename in PNG format. Any pixels matching nodata-value
+   will be masked out. The size of the output image will be rows *
+   pixels-per-cell by columns * pixels-per-cell, where pixels-per-cell
+   is a positive integer."
   [color-ramp pixels-per-cell nodata-value matrix filename]
   {:pre [(pos? pixels-per-cell) (integer? pixels-per-cell) (contains? #{:color :gray} color-ramp)]}
   (let [^BufferedImage image (->> (make-image-parameters matrix pixels-per-cell nodata-value)
@@ -119,3 +132,58 @@
   (m/emap (fn [b m] (if (pos? m) b nodata-value))
           base-layer
           mask-layer))
+
+(defn get-masked-bounds
+  "Returns [min max] for matrix after excluding nodata-value cells."
+  [matrix nodata-value]
+  (let [vals (remove #{nodata-value} (m/eseq matrix))]
+    [(apply min vals) (apply max vals)]))
+
+(defn renormalize-matrix
+  "Scales the values in from-matrix to the value range in to-matrix.
+   Cells containing nodata-value are ignored by this operation."
+  [from-matrix to-matrix nodata-value]
+  (let [[from-min from-max] (get-masked-bounds from-matrix nodata-value)
+        [to-min to-max]     (get-masked-bounds to-matrix   nodata-value)]
+    (m/emap #(if (== % nodata-value)
+               nodata-value
+               (->> (normalize from-min from-max %)
+                    (denormalize to-min to-max)))
+            from-matrix)))
+
+(defn in-bounds?
+  "Returns true if the point lies within the bounds [0,rows) by [0,cols)."
+  [rows cols [i j]]
+  (and (>= i 0)
+       (>= j 0)
+       (< i rows)
+       (< j cols)))
+
+(defn neighborhood-points
+  "Returns a vector of the points within radius steps of the passed in point."
+  [point radius]
+  (let [side   (+ (* 2 radius) 1)
+        offset (- radius)]
+    (mop/+ point [offset offset] (m/index-seq-for-shape [side side]))))
+
+(defn blend-matrix
+  "Creates a new matrix whose values are the averages of its
+   neighboring values within blend-radius steps. Cells containing the
+   nodata-value are unchanged by this operation. If :normalize? = true,
+   scale the blended values to match the value range in matrix."
+  [matrix blend-radius nodata-value & {:keys [normalize?]}]
+  (let [rows           (m/row-count matrix)
+        cols           (m/column-count matrix)
+        blended-matrix (m/compute-matrix [rows cols]
+                                         (fn [i j]
+                                           (if (== nodata-value (m/mget matrix i j))
+                                             nodata-value
+                                             (let [blend-values (->> (neighborhood-points [i j] blend-radius)
+                                                                     (r/filter #(in-bounds? rows cols %))
+                                                                     (r/map #(apply m/mget matrix %))
+                                                                     (filterv #(not= nodata-value %)))]
+                                               (/ (reduce + 0.0 blend-values)
+                                                  (count blend-values))))))]
+    (if normalize?
+      (renormalize-matrix blended-matrix matrix nodata-value)
+      blended-matrix)))

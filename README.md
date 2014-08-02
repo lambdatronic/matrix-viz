@@ -13,6 +13,21 @@ nodata-value will be masked out. The size of the output image will be
 rows * pixels-per-cell by columns * pixels-per-cell, where
 pixels-per-cell is a positive integer.
 
+(apply-mask base-layer mask-layer nodata-value)
+
+This helper function produces a new matrix containing the values in
+base-layer wherever mask-layer is positive. All other cells are set to
+nodata-value. Use this if you want to mask out values from base-layer
+before sending it to save-matrix-as-png.
+
+(blend-matrix matrix blend-radius nodata-value & {:keys [normalize?]})
+
+This helper function creates a new matrix whose values are the
+averages of its neighboring values within blend-radius steps. Cells
+containing the nodata-value are unchanged by this operation. If
+:normalize? = true, it scales the blended values to match the value
+range in matrix.
+
 ## License
 
 Copyright © 2014 Gary W. Johnson (lambdatronic@gmail.com)
