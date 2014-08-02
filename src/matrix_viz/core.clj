@@ -10,7 +10,7 @@
 
 (m/set-current-implementation :vectorz)
 
-(defn get-cell-color
+(defn- get-cell-color
   [color-ramp ^double percentage] ; [0-1]
   (case color-ramp
     :color (let [h (float (- 0.7 (* percentage 0.7))) ; blue to red
@@ -20,29 +20,29 @@
     :gray  (let [p (float (- 0.7 (* percentage 0.7)))]
              (Color. p p p))))
 
-(defn fill-cell
+(defn- fill-cell
   [^Graphics graphics2D x y pixels-per-cell color]
   (doto graphics2D
     (.setColor color)
     (.fillRect (* x pixels-per-cell) (* y pixels-per-cell) pixels-per-cell pixels-per-cell)))
 
-(defn set-background-color!
+(defn- set-background-color!
   [^Graphics graphics2D ^Color color image-width image-height]
   (doto graphics2D
     (.setColor color)
     (.fillRect 0 0 image-width image-height)))
 
-(defn normalize
+(defn- normalize
   [min max val]
   (/ (- val min)
      (- max min)))
 
-(defn denormalize
+(defn- denormalize
   [min max val]
   (+ (* val (- max min))
      min))
 
-(defn draw-matrix!
+(defn- draw-matrix!
   [^Graphics graphics2D matrix rows cols pixels-per-cell nodata-value legend-min legend-max color-ramp]
   (dotimes [x cols]
     (dotimes [y rows]
@@ -52,14 +52,14 @@
                (get-cell-color color-ramp)
                (fill-cell graphics2D x y pixels-per-cell)))))))
 
-(defn draw-legend-color-ramp!
+(defn- draw-legend-color-ramp!
   [^Graphics graphics2D legend-top legend-color-height legend-width legend-padding color-ramp]
   (doseq [x (range legend-padding (+ legend-padding legend-width))]
     (let [cell-color (get-cell-color color-ramp (/ (- x legend-padding) legend-width))] ; ranges from [0-1]
       (doseq [y (range legend-top (+ legend-top legend-color-height))]
         (fill-cell graphics2D x y 1 cell-color)))))
 
-(defn draw-legend-text!
+(defn- draw-legend-text!
   [^Graphics graphics2D legend-min legend-max legend-padding image-width image-height color-ramp]
   (let [min-val-string (format "Min: %.2f" legend-min)
         max-val-string (format "Max: %.2f" legend-max)
@@ -78,7 +78,7 @@
                                (.. graphics2D getFontMetrics (stringWidth max-val-string)))
                    ^Integer (- image-height legend-padding)))))
 
-(defn render-matrix
+(defn- render-matrix
   [matrix pixels-per-cell nodata-value color-ramp
    {:keys [rows cols image-height image-width legend-color-height
            legend-padding legend-top legend-width legend-min legend-max]}]
@@ -93,7 +93,7 @@
       (.dispose))
     image))
 
-(defn make-image-parameters
+(defn- make-image-parameters
   [matrix pixels-per-cell nodata-value]
   (let [rows                   (m/row-count matrix)
         cols                   (m/column-count matrix)
@@ -135,13 +135,13 @@
           base-layer
           mask-layer))
 
-(defn get-masked-bounds
+(defn- get-masked-bounds
   "Returns [min max] for matrix after excluding nodata-value cells."
   [matrix nodata-value]
   (let [vals (remove #{nodata-value} (m/eseq matrix))]
     [(apply min vals) (apply max vals)]))
 
-(defn renormalize-matrix
+(defn- renormalize-matrix
   "Scales the values in from-matrix to the value range in to-matrix.
    Cells containing nodata-value are ignored by this operation."
   [from-matrix to-matrix nodata-value]
@@ -153,7 +153,7 @@
                     (denormalize to-min to-max)))
             from-matrix)))
 
-(defn in-bounds?
+(defn- in-bounds?
   "Returns true if the point lies within the bounds [0,rows) by [0,cols)."
   [rows cols [i j]]
   (and (>= i 0)
@@ -161,7 +161,7 @@
        (< i rows)
        (< j cols)))
 
-(defn neighborhood-points
+(defn- neighborhood-points
   "Returns a vector of the points within radius steps of the passed in point."
   [point radius]
   (let [side   (+ (* 2 radius) 1)
