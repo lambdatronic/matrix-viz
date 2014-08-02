@@ -3,7 +3,7 @@
             [clojure.core.matrix :as m]
             [clojure.core.matrix.operators :as mop]
             [clojure.core.reducers :as r])
-  (:import (java.awt Color Graphics)
+  (:import (java.awt Color Graphics Font)
            (java.awt.image BufferedImage)
            (javax.imageio ImageIO)
            (java.io IOException)))
@@ -63,17 +63,19 @@
   [^Graphics graphics2D legend-min legend-max legend-padding image-width image-height color-ramp]
   (let [min-val-string (format "Min: %.2f" legend-min)
         max-val-string (format "Max: %.2f" legend-max)
-        max-val-width  (.. graphics2D getFontMetrics (stringWidth max-val-string))]
+        current-font   (.getFont graphics2D)]
     (doto graphics2D
+      (.setFont (.deriveFont current-font Font/BOLD 16.0))
       (.setColor (if (= color-ramp :color)
                    (get-cell-color color-ramp 0.0)
                    (get-cell-color color-ramp 1.0)))
       (.drawString min-val-string
-                   ^Integer legend-padding
+                   ^Integer (* 2 legend-padding)
                    ^Integer (- image-height legend-padding))
       (.setColor (get-cell-color color-ramp 1.0))
       (.drawString max-val-string
-                   ^Integer (- image-width legend-padding max-val-width)
+                   ^Integer (- image-width legend-padding legend-padding
+                               (.. graphics2D getFontMetrics (stringWidth max-val-string)))
                    ^Integer (- image-height legend-padding)))))
 
 (defn render-matrix
@@ -98,8 +100,8 @@
         image-height-no-legend (* rows pixels-per-cell)
         image-width            (* cols pixels-per-cell)
         legend-color-height    (max 20 (quot image-height-no-legend 20))
-        legend-text-height     (quot legend-color-height 2)
-        legend-padding         (quot legend-text-height 2)]
+        legend-text-height     (int (/ legend-color-height 1.5))
+        legend-padding         (quot legend-color-height 4)]
     {:rows                rows
      :cols                cols
      :image-height        (+ image-height-no-legend legend-color-height legend-text-height (* legend-padding 3))
