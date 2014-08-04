@@ -29,6 +29,13 @@ containing the nodata-value are unchanged by this operation. If
 :normalize? = true, it scales the blended values to match the value
 range in matrix.
 
+(bleed-matrix matrix bleed-radius nodata-value bleed-test?)
+
+This helper function creates a new matrix in which all cells whose
+values pass bleed-test? are copied into their neighboring cells out to
+distance bleed-radius. Cells containing the nodata-value are unchanged
+by this operation.
+
 ## License
 
 Copyright © 2014 Gary W. Johnson (lambdatronic@gmail.com)

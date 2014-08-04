@@ -198,3 +198,29 @@
     (if normalize?
       (renormalize-matrix blended-matrix matrix nodata-value)
       blended-matrix)))
+
+(defn- points-where
+  "Returns a set of the [i j] coordinates for each point in matrix
+   which satisfies pred?."
+  [pred? matrix]
+  (into #{}
+        (r/filter (fn [point] (pred? (apply m/mget matrix point)))
+                  (m/index-seq matrix))))
+
+(defn bleed-matrix
+  "Creates a new matrix in which all cells whose values pass
+   bleed-test? are copied into their neighboring cells out to distance
+   bleed-radius. Cells containing the nodata-value are unchanged by
+   this operation."
+  [matrix bleed-radius nodata-value bleed-test?]
+  (let [matrix' (m/mutable matrix)
+        rows    (m/row-count matrix)
+        cols    (m/column-count matrix)]
+    (doseq [point (points-where bleed-test? matrix)]
+      (let [bleed-value (apply m/mget matrix point)]
+        (doseq [[i j] (->> (neighborhood-points point bleed-radius)
+                           (filter #(and (in-bounds? rows cols %)
+                                         (not= nodata-value
+                                               (apply m/mget matrix %)))))]
+          (m/mset! matrix' i j bleed-value))))
+    matrix'))
