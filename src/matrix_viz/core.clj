@@ -10,15 +10,23 @@
 
 (m/set-current-implementation :vectorz)
 
+(defn- log-scale
+  [x]
+  (if (< x 1E-10)
+    0.0
+    (+ 1 (* 0.1 (Math/log10 x)))))
+
 (defn- get-cell-color
   [color-ramp ^double percentage] ; [0-1]
   (case color-ramp
-    :color (let [h (float (- 0.7 (* percentage 0.7))) ; blue to red
-                 s (float 1.0)
-                 b (float 1.0)]
-             (Color/getHSBColor h s b))
-    :gray  (let [p (float (- 0.7 (* percentage 0.7)))]
-             (Color. p p p))))
+    :color   (let [h (float (- 0.7 (* percentage 0.7))) ; blue to red
+                   s (float 1.0)
+                   b (float 1.0)]
+               (Color/getHSBColor h s b))
+    :gray    (let [p (float (- 0.7 (* percentage 0.7)))]
+               (Color. p p p))
+    :graylog (let [p (float (- 0.7 (* (log-scale percentage) 0.7)))]
+               (Color. p p p))))
 
 (defn- fill-cell
   [^Graphics graphics2D x y pixels-per-cell color]
@@ -115,13 +123,14 @@
 
 (defn save-matrix-as-png
   "Renders the matrix as either an 8-bit grayscale image (color-ramp
-   = :gray) or an 8-bit RGB image (color-ramp = :color) and saves it to
-   the given filename in PNG format. Any pixels matching nodata-value
-   will be masked out. The size of the output image will be rows *
-   pixels-per-cell by columns * pixels-per-cell, where pixels-per-cell
-   is a positive integer."
+   = :gray), an 8-bit grayscale image with semilog scaling (color-ramp
+   = :graylog), or an 8-bit RGB image (color-ramp = :color) and saves
+   it to the given filename in PNG format. Any pixels matching
+   nodata-value will be masked out. The size of the output image will
+   be rows * pixels-per-cell by columns * pixels-per-cell, where
+   pixels-per-cell is a positive integer."
   [color-ramp pixels-per-cell nodata-value matrix filename]
-  {:pre [(pos? pixels-per-cell) (integer? pixels-per-cell) (contains? #{:color :gray} color-ramp)]}
+  {:pre [(pos? pixels-per-cell) (integer? pixels-per-cell) (contains? #{:color :gray :graylog} color-ramp)]}
   (let [^BufferedImage image (->> (make-image-parameters matrix pixels-per-cell nodata-value)
                                   (render-matrix matrix pixels-per-cell nodata-value color-ramp))]
     (try (ImageIO/write image "png" (io/file filename))
