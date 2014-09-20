@@ -1,4 +1,4 @@
-(defproject org.clojars.lambdatronic/matrix-viz "0.1.6"
+(defproject org.clojars.lambdatronic/matrix-viz "0.1.7"
   :description "A simple library to visualize core.matrix matrices."
   :url "https://github.com/lambdatronic/matrix-viz"
   :license {:name "Eclipse Public License"

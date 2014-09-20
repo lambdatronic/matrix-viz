@@ -19,14 +19,18 @@
 (defn- get-cell-color
   [color-ramp ^double percentage] ; [0-1]
   (case color-ramp
-    :color   (let [h (float (- 0.7 (* percentage 0.7))) ; blue to red
-                   s (float 1.0)
-                   b (float 1.0)]
-               (Color/getHSBColor h s b))
-    :gray    (let [p (float (- 0.7 (* percentage 0.7)))]
-               (Color. p p p))
-    :graylog (let [p (float (- 0.7 (* (log-scale percentage) 0.7)))]
-               (Color. p p p))))
+    :color    (let [h (float (- 0.7 (* percentage 0.7))) ; blue to red
+                    s (float 1.0)
+                    b (float 1.0)]
+                (Color/getHSBColor h s b))
+    :colorlog (let [h (float (- 0.7 (* (log-scale percentage) 0.7))) ; blue to red
+                    s (float 1.0)
+                    b (float 1.0)]
+                (Color/getHSBColor h s b))
+    :gray     (let [p (float (- 0.7 (* percentage 0.7)))]
+                (Color. p p p))
+    :graylog  (let [p (float (- 0.7 (* (log-scale percentage) 0.7)))]
+                (Color. p p p))))
 
 (defn- fill-cell
   [^Graphics graphics2D x y pixels-per-cell color]
@@ -74,7 +78,7 @@
         current-font   (.getFont graphics2D)]
     (doto graphics2D
       (.setFont (.deriveFont current-font Font/BOLD 16.0))
-      (.setColor (if (= color-ramp :color)
+      (.setColor (if (contains? #{:color :colorlog} color-ramp)
                    (get-cell-color color-ramp 0.0)
                    (get-cell-color color-ramp 1.0)))
       (.drawString min-val-string
@@ -90,7 +94,7 @@
   [matrix pixels-per-cell nodata-value color-ramp
    {:keys [rows cols image-height image-width legend-color-height
            legend-padding legend-top legend-width legend-min legend-max]}]
-  (let [image (BufferedImage. image-width image-height (if (= color-ramp :color)
+  (let [image (BufferedImage. image-width image-height (if (contains? #{:color :colorlog} color-ramp)
                                                          BufferedImage/TYPE_INT_RGB
                                                          BufferedImage/TYPE_BYTE_GRAY))]
     (doto (.createGraphics image)
@@ -124,13 +128,16 @@
 (defn save-matrix-as-png
   "Renders the matrix as either an 8-bit grayscale image (color-ramp
    = :gray), an 8-bit grayscale image with semilog scaling (color-ramp
-   = :graylog), or an 8-bit RGB image (color-ramp = :color) and saves
-   it to the given filename in PNG format. Any pixels matching
+   = :graylog), an 8-bit RGB image (color-ramp = :color), or an 8-bit
+   RGB image with semilog scaling (color-ramp = :colorlog) and saves it
+   to the given filename in PNG format. Any pixels matching
    nodata-value will be masked out. The size of the output image will
    be rows * pixels-per-cell by columns * pixels-per-cell, where
    pixels-per-cell is a positive integer."
   [color-ramp pixels-per-cell nodata-value matrix filename]
-  {:pre [(pos? pixels-per-cell) (integer? pixels-per-cell) (contains? #{:color :gray :graylog} color-ramp)]}
+  {:pre [(pos? pixels-per-cell)
+         (integer? pixels-per-cell)
+         (contains? #{:color :colorlog :gray :graylog} color-ramp)]}
   (let [^BufferedImage image (->> (make-image-parameters matrix pixels-per-cell nodata-value)
                                   (render-matrix matrix pixels-per-cell nodata-value color-ramp))]
     (try (ImageIO/write image "png" (io/file filename))
