@@ -3,8 +3,9 @@
   :url "https://github.com/lambdatronic/matrix-viz"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure    "1.6.0"]
+  :dependencies [[org.clojure/clojure    "1.10.3"]
                  [net.mikera/core.matrix "0.22.0"]
-                 [net.mikera/vectorz-clj "0.21.0"]]
+                 [net.mikera/vectorz-clj "0.21.0"]
+                 [cnuernber/dtype-next   "9.004"]]
   :min-lein-version "2.0.0"
   :global-vars {*warn-on-reflection* true})
