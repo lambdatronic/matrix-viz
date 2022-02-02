@@ -22,7 +22,7 @@
   [data]
   (if (t/tensor? data)
     (-> data t/tensor->dimensions :shape second)
-    (m/row-count data)))
+    (m/column-count data)))
 
 (defn- emap
   [f & args]
