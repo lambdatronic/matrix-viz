@@ -2,13 +2,73 @@
   (:require [clojure.java.io :as io]
             [clojure.core.matrix :as m]
             [clojure.core.matrix.operators :as mop]
-            [clojure.core.reducers :as r])
+            [clojure.core.reducers :as r]
+            [tech.v3.datatype :as d]
+            [tech.v3.tensor :as t])
   (:import (java.awt Color Graphics Font)
            (java.awt.image BufferedImage)
            (javax.imageio ImageIO)
            (java.io IOException)))
 
 (m/set-current-implementation :vectorz)
+
+(defn- row-count
+  [data]
+  (if (t/tensor? data)
+    (-> data t/tensor->dimensions :shape first)
+    (m/row-count data)))
+
+(defn- column-count
+  [data]
+  (if (t/tensor? data)
+    (-> data t/tensor->dimensions :shape second)
+    (m/row-count data)))
+
+(defn- emap
+  [f & args]
+  (if (every? t/tensor? args)
+    (d/clone
+     (apply d/emap f nil args))
+    (apply m/emap f args)))
+
+(defn- eseq
+  [data]
+  (if (t/tensor? data)
+    (t/tensor->buffer data)
+    (m/eseq data)))
+
+(defn- mget
+  [data & args]
+  (if (t/tensor? data)
+    (apply t/mget data args)
+    (apply m/mget data args)))
+
+(defn- mset!
+  [data & args]
+  (if (t/tensor? data)
+    (apply t/mset! data args)
+    (apply m/mset! data args)))
+
+(defn- mutable
+  [data]
+  (if (t/tensor? data)
+    (d/clone data)
+    (m/mutable data)))
+
+(defn- index-seq
+  [data]
+  (if (t/tensor? data)
+    (-> (t/tensor->dimensions data)
+        :shape
+        (t/compute-tensor (fn [& args] (vec args)))
+        d/->buffer)
+    (m/index-seq data)))
+
+(defn- compute-matrix
+  [data shape f]
+  (if (t/tensor? data)
+    (t/compute-tensor shape f)
+    (m/compute-matrix shape f)))
 
 (defn- log-scale
   [x]
@@ -58,8 +118,8 @@
   [^Graphics graphics2D matrix rows cols pixels-per-cell nodata-value legend-min legend-max color-ramp]
   (dotimes [x cols]
     (dotimes [y rows]
-      (let [cell-value (m/mget matrix y x)]
-        (if-not (= nodata-value cell-value)
+      (let [cell-value (mget matrix y x)]
+        (when-not (= nodata-value cell-value)
           (->> (normalize legend-min legend-max cell-value)
                (get-cell-color color-ramp)
                (fill-cell graphics2D x y pixels-per-cell)))))))
@@ -107,8 +167,8 @@
 
 (defn- make-image-parameters
   [matrix pixels-per-cell nodata-value]
-  (let [rows                   (m/row-count matrix)
-        cols                   (m/column-count matrix)
+  (let [rows                   (row-count matrix)
+        cols                   (column-count matrix)
         image-height-no-legend (* rows pixels-per-cell)
         image-width            (* cols pixels-per-cell)
         legend-color-height    (max 20 (quot image-height-no-legend 20))
@@ -122,8 +182,8 @@
      :legend-padding      legend-padding
      :legend-top          (+ image-height-no-legend legend-padding)
      :legend-width        (- image-width (* 2 legend-padding))
-     :legend-min          (apply min (remove #{nodata-value} (m/eseq matrix)))
-     :legend-max          (apply max (remove #{nodata-value} (m/eseq matrix)))}))
+     :legend-min          (apply min (remove #{nodata-value} (eseq matrix)))
+     :legend-max          (apply max (remove #{nodata-value} (eseq matrix)))}))
 
 (defn save-matrix-as-png
   "Renders the matrix as either an 8-bit grayscale image (color-ramp
@@ -147,14 +207,14 @@
   "Produces a new matrix containing the values in base-layer wherever
    mask-layer is positive. All other cells are set to nodata-value."
   [base-layer mask-layer nodata-value]
-  (m/emap (fn [b m] (if (pos? m) b nodata-value))
-          base-layer
-          mask-layer))
+  (emap (fn [b m] (if (pos? m) b nodata-value))
+        base-layer
+        mask-layer))
 
 (defn- get-masked-bounds
   "Returns [min max] for matrix after excluding nodata-value cells."
   [matrix nodata-value]
-  (let [vals (remove #{nodata-value} (m/eseq matrix))]
+  (let [vals (remove #{nodata-value} (eseq matrix))]
     [(apply min vals) (apply max vals)]))
 
 (defn- renormalize-matrix
@@ -163,11 +223,11 @@
   [from-matrix to-matrix nodata-value]
   (let [[from-min from-max] (get-masked-bounds from-matrix nodata-value)
         [to-min to-max]     (get-masked-bounds to-matrix   nodata-value)]
-    (m/emap #(if (== % nodata-value)
-               nodata-value
-               (->> (normalize from-min from-max %)
-                    (denormalize to-min to-max)))
-            from-matrix)))
+    (emap #(if (== % nodata-value)
+             nodata-value
+             (->> (normalize from-min from-max %)
+                  (denormalize to-min to-max)))
+          from-matrix)))
 
 (defn- in-bounds?
   "Returns true if the point lies within the bounds [0,rows) by [0,cols)."
@@ -190,18 +250,19 @@
    nodata-value are unchanged by this operation. If :normalize? = true,
    scale the blended values to match the value range in matrix."
   [matrix blend-radius nodata-value & {:keys [normalize?]}]
-  (let [rows           (m/row-count matrix)
-        cols           (m/column-count matrix)
-        blended-matrix (m/compute-matrix [rows cols]
-                                         (fn [i j]
-                                           (if (== nodata-value (m/mget matrix i j))
-                                             nodata-value
-                                             (let [blend-values (->> (neighborhood-points [i j] blend-radius)
-                                                                     (r/filter #(in-bounds? rows cols %))
-                                                                     (r/map #(apply m/mget matrix %))
-                                                                     (filterv #(not= nodata-value %)))]
-                                               (/ (reduce + 0.0 blend-values)
-                                                  (count blend-values))))))]
+  (let [rows           (row-count matrix)
+        cols           (column-count matrix)
+        blended-matrix (compute-matrix matrix
+                                       [rows cols]
+                                       (fn [i j]
+                                         (if (== nodata-value (mget matrix i j))
+                                           nodata-value
+                                           (let [blend-values (->> (neighborhood-points [i j] blend-radius)
+                                                                   (r/filter #(in-bounds? rows cols %))
+                                                                   (r/map #(apply mget matrix %))
+                                                                   (filterv #(not= nodata-value %)))]
+                                             (/ (reduce + 0.0 blend-values)
+                                                (count blend-values))))))]
     (if normalize?
       (renormalize-matrix blended-matrix matrix nodata-value)
       blended-matrix)))
@@ -211,8 +272,8 @@
    which satisfies pred?."
   [pred? matrix]
   (into #{}
-        (r/filter (fn [point] (pred? (apply m/mget matrix point)))
-                  (m/index-seq matrix))))
+        (r/filter (fn [point] (pred? (apply mget matrix point)))
+                  (index-seq matrix))))
 
 (defn bleed-matrix
   "Creates a new matrix in which all cells whose values pass
@@ -220,14 +281,14 @@
    bleed-radius. Cells containing the nodata-value are unchanged by
    this operation."
   [matrix bleed-radius nodata-value bleed-test?]
-  (let [matrix' (m/mutable matrix)
-        rows    (m/row-count matrix)
-        cols    (m/column-count matrix)]
+  (let [matrix' (mutable matrix)
+        rows    (row-count matrix)
+        cols    (column-count matrix)]
     (doseq [point (points-where bleed-test? matrix)]
-      (let [bleed-value (apply m/mget matrix point)]
+      (let [bleed-value (apply mget matrix point)]
         (doseq [[i j] (->> (neighborhood-points point bleed-radius)
                            (filter #(and (in-bounds? rows cols %)
                                          (not= nodata-value
-                                               (apply m/mget matrix %)))))]
-          (m/mset! matrix' i j bleed-value))))
+                                               (apply mget matrix %)))))]
+          (mset! matrix' i j bleed-value))))
     matrix'))
