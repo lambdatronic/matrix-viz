@@ -41,5 +41,5 @@ by this operation.
 
 Copyright © 2014-2022 Gary W. Johnson (lambdatronic@gmail.com)
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the terms of the Eclipse Public License version 2.0
+(EPLv2). See LICENSE.txt in this directory for more information.
