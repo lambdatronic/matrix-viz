@@ -1,10 +1,45 @@
-# matrix-viz
+* MatrixViz
 
-A simple library to visualize core.matrix matrices or dtype-next tensors.
+A simple library to visualize core.matrix matrices and dtype-next tensors.
 
-## Usage
+** Useful Aliases
+*** check-deps
 
+To check for outdated dependencies, run:
+
+#+begin_src sh
+clojure -M:check-deps
+#+end_src
+
+Remember to update deps.edn with any new versions that are found.
+
+*** check-reflections
+
+To check for reflection warnings, run:
+
+#+begin_src sh
+clojure -M:check-reflections
+#+end_src
+
+Remember to add type hints as necessary to remove these once found.
+
+*** deploy-jar
+
+To build a JAR from this library and deploy it to clojars.org, run:
+
+#+begin_src sh
+env CLOJARS_USERNAME=your-username CLOJARS_PASSWORD=your-clojars-token clojure -M:deploy-jar
+#+end_src
+
+NOTE: As of 2020-06-27, Clojars will no longer accept your Clojars
+password when deploying. You will have to use a token instead. Please
+read more about this [[https://github.com/clojars/clojars-web/wiki/Deploy-Tokens][here]].
+
+** API Usage
+
+#+begin_src clojure
 (save-matrix-as-png color-ramp pixels-per-cell nodata-value matrix filename)
+#+end_src
 
 This will render the matrix as either an 8-bit grayscale image
 (color-ramp = :gray), an 8-bit grayscale image with semilog scaling
@@ -15,14 +50,18 @@ nodata-value will be masked out. The size of the output image will be
 rows * pixels-per-cell by columns * pixels-per-cell, where
 pixels-per-cell is a positive integer.
 
+#+begin_src clojure
 (apply-mask base-layer mask-layer nodata-value)
+#+end_src
 
 This helper function produces a new matrix containing the values in
 base-layer wherever mask-layer is positive. All other cells are set to
 nodata-value. Use this if you want to mask out values from base-layer
 before sending it to save-matrix-as-png.
 
+#+begin_src clojure
 (blend-matrix matrix blend-radius nodata-value & {:keys [normalize?]})
+#+end_src
 
 This helper function creates a new matrix whose values are the
 averages of its neighboring values within blend-radius steps. Cells
@@ -30,14 +69,16 @@ containing the nodata-value are unchanged by this operation. If
 :normalize? = true, it scales the blended values to match the value
 range in matrix.
 
+#+begin_src clojure
 (bleed-matrix matrix bleed-radius nodata-value bleed-test?)
+#+end_src
 
 This helper function creates a new matrix in which all cells whose
 values pass bleed-test? are copied into their neighboring cells out to
 distance bleed-radius. Cells containing the nodata-value are unchanged
 by this operation.
 
-## License
+** License
 
 Copyright © 2014-2022 Gary W. Johnson (lambdatronic@gmail.com)
 
