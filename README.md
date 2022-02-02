@@ -1,6 +1,6 @@
 # matrix-viz
 
-A simple library to visualize core.matrix matrices.
+A simple library to visualize core.matrix matrices or dtype-next tensors.
 
 ## Usage
 
@@ -39,7 +39,7 @@ by this operation.
 
 ## License
 
-Copyright © 2014 Gary W. Johnson (lambdatronic@gmail.com)
+Copyright © 2014-2022 Gary W. Johnson (lambdatronic@gmail.com)
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
