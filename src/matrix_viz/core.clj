@@ -106,10 +106,11 @@
 
 (defn- normalize
   [min max val]
-  (if (every? zero? [min max])
-    0
-    (/ (- val min)
-       (- max min))))
+  (cond
+    (every? zero? [min max]) 0
+    (= min max)              1.0
+    :else                    (/ (- val min)
+                                (- max min))))
 
 (defn- denormalize
   [min max val]
