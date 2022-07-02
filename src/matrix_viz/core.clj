@@ -38,10 +38,14 @@
     (m/eseq data)))
 
 (defn- mget
-  [data & args]
-  (if (t/tensor? data)
-    (apply t/mget data args)
-    (apply m/mget data args)))
+  ([data x0 x1]
+   (if (t/tensor? data)
+     (t/mget data x0 x1)
+     (m/mget data x0 x1)))
+  ([data x0 x1 x2 & args]
+   (if (t/tensor? data)
+     (apply t/mget data x0 x1 x2 args)
+     (apply m/mget data x0 x1 x2 args))))
 
 (defn- mset!
   [data & args]
