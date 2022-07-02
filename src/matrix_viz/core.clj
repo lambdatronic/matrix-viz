@@ -171,6 +171,11 @@
       (.dispose))
     image))
 
+(defn- matrix-values
+  [nodata-value matrix]
+  (->> (eseq matrix)
+       (eduction (remove (fn [v] (= nodata-value v))))))
+
 (defn- make-image-parameters
   [matrix pixels-per-cell nodata-value]
   (let [rows                   (row-count matrix)
@@ -188,8 +193,8 @@
      :legend-padding      legend-padding
      :legend-top          (+ image-height-no-legend legend-padding)
      :legend-width        (- image-width (* 2 legend-padding))
-     :legend-min          (apply min (remove #{nodata-value} (eseq matrix)))
-     :legend-max          (apply max (remove #{nodata-value} (eseq matrix)))}))
+     :legend-min          (reduce min (matrix-values nodata-value matrix))
+     :legend-max          (reduce max (matrix-values nodata-value matrix))}))
 
 (defn save-matrix-as-png
   "Renders the matrix as either an 8-bit grayscale image (color-ramp
