@@ -187,6 +187,17 @@
      :legend-min          (apply min (remove #{nodata-value} (eseq matrix)))
      :legend-max          (apply max (remove #{nodata-value} (eseq matrix)))}))
 
+(defn matrix-to-buffered-image
+  "Renders the matrix into an in-memory BufferedImage.
+   Accepts the same options as save-matrix-as-png."
+  ^BufferedImage
+  [color-ramp pixels-per-cell nodata-value matrix]
+  {:pre [(pos? pixels-per-cell)
+         (integer? pixels-per-cell)
+         (contains? #{:color :colorlog :gray :graylog} color-ramp)]}
+  (->> (make-image-parameters matrix pixels-per-cell nodata-value)
+       (render-matrix matrix pixels-per-cell nodata-value color-ramp)))
+
 (defn save-matrix-as-png
   "Renders the matrix as either an 8-bit grayscale image (color-ramp
    = :gray), an 8-bit grayscale image with semilog scaling (color-ramp
@@ -200,8 +211,7 @@
   {:pre [(pos? pixels-per-cell)
          (integer? pixels-per-cell)
          (contains? #{:color :colorlog :gray :graylog} color-ramp)]}
-  (let [^BufferedImage image (->> (make-image-parameters matrix pixels-per-cell nodata-value)
-                                  (render-matrix matrix pixels-per-cell nodata-value color-ramp))]
+  (let [image (matrix-to-buffered-image color-ramp pixels-per-cell nodata-value matrix)]
     (try (ImageIO/write image "png" (io/file filename))
          (catch IOException _ (println "Failed to write matrix to PNG file" filename)))))
 
