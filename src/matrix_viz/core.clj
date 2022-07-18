@@ -184,7 +184,8 @@
         image-width            (* cols pixels-per-cell)
         legend-color-height    (max 20 (quot image-height-no-legend 20))
         legend-text-height     (int (/ legend-color-height 1.5))
-        legend-padding         (quot legend-color-height 4)]
+        legend-padding         (quot legend-color-height 4)
+        v0                     (first (matrix-values nodata-value matrix))]
     {:rows                rows
      :cols                cols
      :image-height        (+ image-height-no-legend legend-color-height legend-text-height (* legend-padding 3))
@@ -193,8 +194,8 @@
      :legend-padding      legend-padding
      :legend-top          (+ image-height-no-legend legend-padding)
      :legend-width        (- image-width (* 2 legend-padding))
-     :legend-min          (reduce min (matrix-values nodata-value matrix))
-     :legend-max          (reduce max (matrix-values nodata-value matrix))}))
+     :legend-min          (reduce min v0 (matrix-values nodata-value matrix))
+     :legend-max          (reduce max v0 (matrix-values nodata-value matrix))}))
 
 (defn save-matrix-as-png
   "Renders the matrix as either an 8-bit grayscale image (color-ramp
