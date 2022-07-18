@@ -38,6 +38,11 @@
     (m/eseq data)))
 
 (defn- mget
+  ([data x0] data)
+  ([data x0]
+   (if (t/tensor? data)
+     (t/mget data x0)
+     (m/mget data x0)))
   ([data x0 x1]
    (if (t/tensor? data)
      (t/mget data x0 x1)
